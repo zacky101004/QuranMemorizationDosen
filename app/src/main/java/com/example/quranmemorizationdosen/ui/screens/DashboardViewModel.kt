@@ -1,4 +1,3 @@
-// ui/screens/DashboardViewModel.kt
 package com.example.quranmemorizationdosen.ui.screens
 
 import android.content.Context
@@ -44,6 +43,7 @@ class DashboardViewModel(private val tokenManager: TokenManager) : ViewModel() {
                 }
             } catch (e: Exception) {
                 _dosenState.value = DosenState.Error("Kesalahan: ${e.message}")
+                Log.e(TAG, "fetchDosenInfo error: ${e.message}", e)
             }
         }
     }
@@ -65,8 +65,10 @@ class DashboardViewModel(private val tokenManager: TokenManager) : ViewModel() {
                 }
             } catch (e: HttpException) {
                 _setoranState.value = SetoranState.Error("Kesalahan HTTP: ${e.message()} (Kode: ${e.code()})")
+                Log.e(TAG, "fetchSetoranMahasiswa HTTP error: ${e.message()}", e)
             } catch (e: Exception) {
                 _setoranState.value = SetoranState.Error("Kesalahan jaringan: ${e.message}")
+                Log.e(TAG, "fetchSetoranMahasiswa error: ${e.message}", e)
             }
         }
     }
@@ -85,6 +87,7 @@ class DashboardViewModel(private val tokenManager: TokenManager) : ViewModel() {
                             )
                         )
                     )
+                    Log.d(TAG, "postSetoranMahasiswa: Sending request for NIM=$nim, idKomponen=$idKomponenSetoran")
                     val response = RetrofitClient.apiService.postSetoranMahasiswa(
                         token = "Bearer $token",
                         nim = nim,
@@ -92,15 +95,19 @@ class DashboardViewModel(private val tokenManager: TokenManager) : ViewModel() {
                     )
                     if (response.isSuccessful) {
                         _setoranState.value = SetoranState.Success(null)
+                        Log.d(TAG, "postSetoranMahasiswa: Success")
                         fetchSetoranMahasiswa(nim) // Refresh data setelah berhasil
                     } else {
-                        _setoranState.value = SetoranState.Error("Gagal menambahkan setoran: ${response.message()}")
+                        _setoranState.value = SetoranState.Error("Gagal menambahkan setoran: ${response.message()} (Kode: ${response.code()})")
+                        Log.e(TAG, "postSetoranMahasiswa error: ${response.message()} (Kode: ${response.code()})")
                     }
                 } else {
                     _setoranState.value = SetoranState.Error("Token tidak ditemukan")
+                    Log.e(TAG, "postSetoranMahasiswa error: Token tidak ditemukan")
                 }
             } catch (e: Exception) {
                 _setoranState.value = SetoranState.Error("Kesalahan: ${e.message}")
+                Log.e(TAG, "postSetoranMahasiswa error: ${e.message}", e)
             }
         }
     }
@@ -120,6 +127,7 @@ class DashboardViewModel(private val tokenManager: TokenManager) : ViewModel() {
                             )
                         )
                     )
+                    Log.d(TAG, "deleteSetoranMahasiswa: Sending request for NIM=$nim, idSetoran=$idSetoran, idKomponen=$idKomponenSetoran")
                     val response = RetrofitClient.apiService.deleteSetoranMahasiswa(
                         token = "Bearer $token",
                         nim = nim,
@@ -128,25 +136,34 @@ class DashboardViewModel(private val tokenManager: TokenManager) : ViewModel() {
                     )
                     if (response.isSuccessful) {
                         _setoranState.value = SetoranState.Success(null)
+                        Log.d(TAG, "deleteSetoranMahasiswa: Success")
                         fetchSetoranMahasiswa(nim) // Refresh data setelah berhasil
                     } else {
-                        _setoranState.value = SetoranState.Error("Gagal menghapus setoran: ${response.message()}")
+                        _setoranState.value = SetoranState.Error("Gagal menghapus setoran: ${response.message()} (Kode: ${response.code()})")
+                        Log.e(TAG, "deleteSetoranMahasiswa error: ${response.message()} (Kode: ${response.code()})")
                     }
                 } else {
                     _setoranState.value = SetoranState.Error("Token tidak ditemukan")
+                    Log.e(TAG, "deleteSetoranMahasiswa error: Token tidak ditemukan")
                 }
+            } catch (e: HttpException) {
+                _setoranState.value = SetoranState.Error("Kesalahan HTTP: ${e.message()} (Kode: ${e.code()})")
+                Log.e(TAG, "deleteSetoranMahasiswa HTTP error: ${e.message()} (Kode: ${e.code()})", e)
             } catch (e: Exception) {
                 _setoranState.value = SetoranState.Error("Kesalahan: ${e.message}")
+                Log.e(TAG, "deleteSetoranMahasiswa error: ${e.message}", e)
             }
         }
     }
 
     private fun handleError(code: Int, message: String, isDosen: Boolean) {
+        Log.e(TAG, "handleError: Code=$code, Message=$message, isDosen=$isDosen")
         when (code) {
             401 -> {
                 viewModelScope.launch {
                     val refreshToken = tokenManager.getRefreshToken()
                     if (refreshToken != null) {
+                        Log.d(TAG, "handleError: Attempting to refresh token")
                         val refreshResponse = RetrofitClient.kcApiService.refreshToken(
                             "setoran-mobile-dev",
                             "aqJp3xnXKudgC7RMOshEQP7ZoVKWzoSl",
@@ -156,12 +173,18 @@ class DashboardViewModel(private val tokenManager: TokenManager) : ViewModel() {
                         if (refreshResponse.isSuccessful) {
                             refreshResponse.body()?.let { auth ->
                                 tokenManager.saveTokens(auth.access_token, auth.refresh_token, auth.id_token)
+                                Log.d(TAG, "handleError: Token refreshed successfully")
                                 if (isDosen) fetchDosenInfo() else fetchSetoranMahasiswa("")
                             }
                         } else {
-                            if (isDosen) _dosenState.value = DosenState.Error("Gagal refresh token")
-                            else _setoranState.value = SetoranState.Error("Gagal refresh token")
+                            if (isDosen) _dosenState.value = DosenState.Error("Gagal refresh token: ${refreshResponse.message()} (Kode: ${refreshResponse.code()})")
+                            else _setoranState.value = SetoranState.Error("Gagal refresh token: ${refreshResponse.message()} (Kode: ${refreshResponse.code()})")
+                            Log.e(TAG, "handleError: Failed to refresh token: ${refreshResponse.message()} (Kode: ${refreshResponse.code()})")
                         }
+                    } else {
+                        if (isDosen) _dosenState.value = DosenState.Error("Refresh token tidak ditemukan")
+                        else _setoranState.value = SetoranState.Error("Refresh token tidak ditemukan")
+                        Log.e(TAG, "handleError: Refresh token tidak ditemukan")
                     }
                 }
             }

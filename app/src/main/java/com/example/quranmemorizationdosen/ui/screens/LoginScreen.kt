@@ -1,5 +1,9 @@
 package com.example.quranmemorizationdosen.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.example.quranmemorizationdosen.R
 import com.example.quranmemorizationdosen.data.api.RetrofitClient
 import com.example.quranmemorizationdosen.TokenManager
+import com.example.quranmemorizationdosen.ui.theme.IslamicGold
 import com.example.quranmemorizationdosen.ui.theme.IslamicGreen
 import com.example.quranmemorizationdosen.ui.theme.IslamicWhite
 import kotlinx.coroutines.launch
@@ -28,7 +33,7 @@ import kotlinx.coroutines.launch
 fun LoginScreen(onLoginSuccess: () -> Unit) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showError by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val tokenManager = remember { TokenManager(context) }
@@ -47,41 +52,54 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 .fillMaxSize()
                 .padding(horizontal = 32.dp)
                 .padding(top = 64.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.img),
-                contentDescription = "App Logo",
-                modifier = Modifier.size(120.dp)
+                contentDescription = "Logo UIN SUSKA RIAU",
+                modifier = Modifier
+                    .size(120.dp)
+                    .padding(bottom = 16.dp)
             )
 
             Text(
-                text = "Quran Memorization Dosen",
+                text = "QuranMemorizationDosen",
                 style = MaterialTheme.typography.titleLarge.copy(fontSize = 28.sp),
                 color = IslamicGreen,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = "Setoran Hafalan Mahasiswa",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+                color = IslamicGold,
+                modifier = Modifier.padding(bottom = 32.dp)
             )
 
             Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 32.dp),
+                    .fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
                         label = { Text("Username") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = IslamicGreen,
-                            unfocusedBorderColor = Color.Gray
+                            unfocusedBorderColor = IslamicGold
                         )
                     )
 
@@ -93,18 +111,23 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp),
+                            .padding(bottom = 16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = IslamicGreen,
-                            unfocusedBorderColor = Color.Gray
+                            unfocusedBorderColor = IslamicGold
                         )
                     )
 
-                    errorMessage?.let {
+                    AnimatedVisibility(
+                        visible = showError,
+                        enter = fadeIn(animationSpec = tween(500)),
+                        exit = fadeOut(animationSpec = tween(500))
+                    ) {
                         Text(
-                            text = it,
+                            text = "Invalid credentials or network error",
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 8.dp)
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(bottom = 16.dp)
                         )
                     }
 
@@ -128,23 +151,23 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                                                 auth.id_token
                                             )
                                             onLoginSuccess()
+                                            showError = false
                                         }
                                     } else {
-                                        errorMessage = "Login gagal: ${response.message()}"
+                                        showError = true
                                     }
                                 } catch (e: Exception) {
-                                    errorMessage = "Kesalahan: ${e.message}"
+                                    showError = true
                                 }
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
-                            .padding(top = 24.dp),
+                            .height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = IslamicGreen),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Login", color = IslamicWhite)
+                        Text("Login", color = IslamicWhite, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }

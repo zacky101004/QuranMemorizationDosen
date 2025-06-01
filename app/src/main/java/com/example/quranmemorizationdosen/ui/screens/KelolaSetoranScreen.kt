@@ -1,17 +1,17 @@
-// ui/screens/KelolaSetoranScreen.kt
 package com.example.quranmemorizationdosen.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -43,6 +43,9 @@ fun KelolaSetoranScreen(navController: NavController) {
     var nimExpanded by remember { mutableStateOf(false) }
     var komponenExpanded by remember { mutableStateOf(false) }
     var setoranExpanded by remember { mutableStateOf(false) }
+    var selectedTabIndex by remember { mutableStateOf(0) }
+
+    val tabs = listOf("Tambah Setoran", "Hapus Setoran")
 
     val mahasiswaList = when (val state = dosenState) {
         is DosenState.Success -> state.data.data.info_mahasiswa_pa.daftar_mahasiswa
@@ -62,7 +65,7 @@ fun KelolaSetoranScreen(navController: NavController) {
             ?.mapNotNull { detail ->
                 detail.info_setoran?.let { info ->
                     SetoranItem(
-                        id = info.tgl_terakhir_setor,
+                        id = info.id,
                         idKomponenSetoran = detail.id,
                         namaKomponenSetoran = detail.nama
                     )
@@ -81,16 +84,6 @@ fun KelolaSetoranScreen(navController: NavController) {
         viewModel.fetchDosenInfo()
     }
 
-    val gradientBrush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFC280CC),
-            Color(0xFFAE7CE7),
-            Color(0xFF72A5BE)
-        ),
-        start = Offset(0f, 0f),
-        end = Offset(0f, Float.POSITIVE_INFINITY)
-    )
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -98,311 +91,375 @@ fun KelolaSetoranScreen(navController: NavController) {
                 title = {
                     Text(
                         "Kelola Setoran",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 20.sp
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color.White
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
+
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF3B82F6),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+                    containerColor = Color(0xFF2E7D32)
+                ),
+                modifier = Modifier.shadow(6.dp)
             )
         },
         bottomBar = {
             BottomNavigationBar(navController)
-        }
-    ) { padding ->
-        Box(
+        },
+        modifier = Modifier.background(Color(0xFFF5F5F5))
+    ) { paddingValues ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(gradientBrush)
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            LazyColumn(
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .shadow(4.dp, RoundedCornerShape(8.dp)),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                // Card 1: Pilih Mahasiswa
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Pilih Mahasiswa",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp,
+                            color = Color(0xFF2E7D32)
+                        )
+                    )
+                    Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFE0E0E0))
+                    ExposedDropdownMenuBox(
+                        expanded = nimExpanded,
+                        onExpandedChange = { nimExpanded = !nimExpanded }
                     ) {
-                        Column(
+                        OutlinedTextField(
+                            value = if (nimInput.isNotBlank()) {
+                                val selected = mahasiswaList.find { it.nim == nimInput }
+                                selected?.let { "${it.nim} - ${it.nama}" } ?: nimInput
+                            } else "",
+                            onValueChange = {},
+                            label = { Text("NIM - Nama Mahasiswa") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .menuAnchor(),
+                            readOnly = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF2E7D32),
+                                unfocusedBorderColor = Color(0xFF9E9E9E)
+                            ),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = nimExpanded)
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = nimExpanded,
+                            onDismissRequest = { nimExpanded = false }
                         ) {
-                            Text(
-                                text = "Pilih Mahasiswa",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF1F2937)
-                            )
-                            Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFE5E7EB))
-                            ExposedDropdownMenuBox(
-                                expanded = nimExpanded,
-                                onExpandedChange = { nimExpanded = !nimExpanded }
-                            ) {
-                                TextField(
-                                    value = if (nimInput.isNotBlank()) {
-                                        val selected = mahasiswaList.find { it.nim == nimInput }
-                                        selected?.let { "${it.nim} - ${it.nama}" } ?: nimInput
-                                    } else "",
-                                    onValueChange = {},
-                                    label = { Text("NIM - Nama Mahasiswa") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor(),
-                                    readOnly = true,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color(0xFFF3F4F6),
-                                        unfocusedContainerColor = Color(0xFFF3F4F6),
-                                        focusedIndicatorColor = Color(0xFF3B82F6),
-                                        unfocusedIndicatorColor = Color(0xFFD1D5DB)
-                                    ),
-                                    trailingIcon = {
-                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = nimExpanded)
-                                    }
+                            mahasiswaList.forEach { mahasiswa ->
+                                DropdownMenuItem(
+                                    text = { Text("${mahasiswa.nim} - ${mahasiswa.nama}") },
+                                    onClick = {
+                                        nimInput = mahasiswa.nim
+                                        nimExpanded = false
+                                    },
+                                    modifier = Modifier.background(Color.White)
                                 )
-                                ExposedDropdownMenu(
-                                    expanded = nimExpanded,
-                                    onDismissRequest = { nimExpanded = false }
-                                ) {
-                                    mahasiswaList.forEach { mahasiswa ->
-                                        DropdownMenuItem(
-                                            text = { Text("${mahasiswa.nim} - ${mahasiswa.nama}") },
-                                            onClick = {
-                                                nimInput = mahasiswa.nim
-                                                nimExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
                 }
+            }
 
-                // Card 2: Tambah Setoran
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.Transparent,
+                contentColor = Color(0xFF2E7D32),
+                divider = { Divider(color = Color(0xFFE0E0E0)) }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedTabIndex == index) Color(0xFF2E7D32) else Color(0xFF9E9E9E)
+                            )
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            when (selectedTabIndex) {
+                0 -> {
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = tween(300)),
+                        exit = fadeOut(animationSpec = tween(300))
                     ) {
-                        Column(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .shadow(4.dp, RoundedCornerShape(8.dp)),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
-                            Text(
-                                text = "Tambah Setoran",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF1F2937)
-                            )
-                            Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFE5E7EB))
-                            ExposedDropdownMenuBox(
-                                expanded = komponenExpanded,
-                                onExpandedChange = { komponenExpanded = !komponenExpanded }
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth()
                             ) {
-                                TextField(
-                                    value = namaKomponenSetoranInput,
-                                    onValueChange = {},
-                                    label = { Text("Komponen Setoran") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor(),
-                                    readOnly = true,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color(0xFFF3F4F6),
-                                        unfocusedContainerColor = Color(0xFFF3F4F6),
-                                        focusedIndicatorColor = Color(0xFF3B82F6),
-                                        unfocusedIndicatorColor = Color(0xFFD1D5DB)
-                                    ),
-                                    trailingIcon = {
-                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = komponenExpanded)
-                                    }
+                                Text(
+                                    text = "Komponen Setoran",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF2E7D32)
+                                    )
                                 )
-                                ExposedDropdownMenu(
+                                Spacer(modifier = Modifier.height(8.dp))
+                                ExposedDropdownMenuBox(
                                     expanded = komponenExpanded,
-                                    onDismissRequest = { komponenExpanded = false }
+                                    onExpandedChange = { komponenExpanded = !komponenExpanded }
                                 ) {
-                                    komponenSetoranList.forEach { komponen ->
-                                        DropdownMenuItem(
-                                            text = { Text(komponen.nama) },
-                                            onClick = {
-                                                idKomponenSetoranInput = komponen.id
-                                                namaKomponenSetoranInput = komponen.nama
-                                                komponenExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = {
-                                    if (nimInput.isBlank()) {
-                                        scope.launch { snackbarHostState.showSnackbar("Pilih mahasiswa terlebih dahulu") }
-                                    } else if (idKomponenSetoranInput.isBlank() || namaKomponenSetoranInput.isBlank()) {
-                                        scope.launch { snackbarHostState.showSnackbar("Pilih komponen setoran") }
-                                    } else {
-                                        viewModel.postSetoranMahasiswa(nimInput, idKomponenSetoranInput, namaKomponenSetoranInput)
-                                        idKomponenSetoranInput = ""
-                                        namaKomponenSetoranInput = ""
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
-                            ) {
-                                Text("Tambah Setoran", fontWeight = FontWeight.Medium, fontSize = 16.sp)
-                            }
-                        }
-                    }
-                }
-
-                // Card 3: Hapus Setoran
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Hapus Setoran",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF1F2937)
-                            )
-                            Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFE5E7EB))
-                            ExposedDropdownMenuBox(
-                                expanded = setoranExpanded,
-                                onExpandedChange = { setoranExpanded = !setoranExpanded }
-                            ) {
-                                TextField(
-                                    value = namaKomponenSetoranDeleteInput,
-                                    onValueChange = {},
-                                    label = { Text("Setoran") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor(),
-                                    readOnly = true,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color(0xFFF3F4F6),
-                                        unfocusedContainerColor = Color(0xFFF3F4F6),
-                                        focusedIndicatorColor = Color(0xFF3B82F6),
-                                        unfocusedIndicatorColor = Color(0xFFD1D5DB)
-                                    ),
-                                    trailingIcon = {
-                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = setoranExpanded)
-                                    }
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = setoranExpanded,
-                                    onDismissRequest = { setoranExpanded = false }
-                                ) {
-                                    idSetoranList.forEach { setoran ->
-                                        DropdownMenuItem(
-                                            text = { Text(setoran.namaKomponenSetoran) },
-                                            onClick = {
-                                                idSetoranInput = setoran.id ?: ""
-                                                idKomponenSetoranDeleteInput = setoran.idKomponenSetoran
-                                                namaKomponenSetoranDeleteInput = setoran.namaKomponenSetoran
-                                                setoranExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = {
-                                    if (nimInput.isBlank()) {
-                                        scope.launch { snackbarHostState.showSnackbar("Pilih mahasiswa terlebih dahulu") }
-                                    } else if (idSetoranInput.isBlank() || idKomponenSetoranDeleteInput.isBlank() || namaKomponenSetoranDeleteInput.isBlank()) {
-                                        scope.launch { snackbarHostState.showSnackbar("Pilih setoran untuk dihapus") }
-                                    } else {
-                                        viewModel.deleteSetoranMahasiswa(nimInput, idSetoranInput, idKomponenSetoranDeleteInput, namaKomponenSetoranDeleteInput)
-                                        idSetoranInput = ""
-                                        idKomponenSetoranDeleteInput = ""
-                                        namaKomponenSetoranDeleteInput = ""
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
-                            ) {
-                                Text("Hapus Setoran", fontWeight = FontWeight.Medium, fontSize = 16.sp)
-                            }
-                        }
-                    }
-                }
-
-                // Feedback State
-                item {
-                    when (val state = setoranState) {
-                        is SetoranState.Loading -> {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                        is SetoranState.Success -> {
-                            state.data?.let {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFD1FAE5))
-                                ) {
-                                    Row(
+                                    OutlinedTextField(
+                                        value = namaKomponenSetoranInput,
+                                        onValueChange = {},
+                                        label = { Text("Pilih Komponen Setoran") },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp),
-                                        horizontalArrangement = Arrangement.Center
+                                            .menuAnchor(),
+                                        readOnly = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Color(0xFF2E7D32),
+                                            unfocusedBorderColor = Color(0xFF9E9E9E)
+                                        ),
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = komponenExpanded)
+                                        }
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = komponenExpanded,
+                                        onDismissRequest = { komponenExpanded = false }
                                     ) {
-                                        Text(
-                                            text = "Aksi setoran berhasil, data diperbarui",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF065F46)
-                                        )
+                                        komponenSetoranList.forEach { komponen ->
+                                            DropdownMenuItem(
+                                                text = { Text(komponen.nama) },
+                                                onClick = {
+                                                    idKomponenSetoranInput = komponen.id
+                                                    namaKomponenSetoranInput = komponen.nama
+                                                    komponenExpanded = false
+                                                },
+                                                modifier = Modifier.background(Color.White)
+                                            )
+                                        }
                                     }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = {
+                                        if (nimInput.isBlank()) {
+                                            scope.launch { snackbarHostState.showSnackbar("Pilih mahasiswa terlebih dahulu") }
+                                        } else if (idKomponenSetoranInput.isBlank() || namaKomponenSetoranInput.isBlank()) {
+                                            scope.launch { snackbarHostState.showSnackbar("Pilih komponen setoran") }
+                                        } else {
+                                            viewModel.postSetoranMahasiswa(nimInput, idKomponenSetoranInput, namaKomponenSetoranInput)
+                                            idKomponenSetoranInput = ""
+                                            namaKomponenSetoranInput = ""
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Transparent
+                                    ),
+                                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(Color(0xFF2E7D32), Color(0xFF4CAF50))
+                                        )
+                                    )
+                                ) {
+                                    Text(
+                                        "Tambah Setoran",
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF2E7D32)
+                                    )
                                 }
                             }
                         }
-                        is SetoranState.Error -> {
-                            LaunchedEffect(state) {
-                                scope.launch { snackbarHostState.showSnackbar(state.message) }
-                            }
-                        }
-                        else -> {}
                     }
                 }
+                1 -> {
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = tween(300)),
+                        exit = fadeOut(animationSpec = tween(300))
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(4.dp, RoundedCornerShape(8.dp)),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Pilih Setoran untuk Dihapus",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF2E7D32)
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                ExposedDropdownMenuBox(
+                                    expanded = setoranExpanded,
+                                    onExpandedChange = { setoranExpanded = !setoranExpanded }
+                                ) {
+                                    OutlinedTextField(
+                                        value = namaKomponenSetoranDeleteInput,
+                                        onValueChange = {},
+                                        label = { Text("Pilih Setoran") },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .menuAnchor(),
+                                        readOnly = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Color(0xFF2E7D32),
+                                            unfocusedBorderColor = Color(0xFF9E9E9E)
+                                        ),
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = setoranExpanded)
+                                        }
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = setoranExpanded,
+                                        onDismissRequest = { setoranExpanded = false }
+                                    ) {
+                                        idSetoranList.forEach { setoran ->
+                                            DropdownMenuItem(
+                                                text = { Text(setoran.namaKomponenSetoran) }, // Perubahan: Hanya tampilkan nama surah
+                                                onClick = {
+                                                    idSetoranInput = setoran.id ?: ""
+                                                    idKomponenSetoranDeleteInput = setoran.idKomponenSetoran
+                                                    namaKomponenSetoranDeleteInput = setoran.namaKomponenSetoran
+                                                    setoranExpanded = false
+                                                },
+                                                modifier = Modifier.background(Color.White)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = {
+                                        if (nimInput.isBlank()) {
+                                            scope.launch { snackbarHostState.showSnackbar("Pilih mahasiswa terlebih dahulu") }
+                                        } else if (idSetoranInput.isBlank() || idKomponenSetoranDeleteInput.isBlank() || namaKomponenSetoranDeleteInput.isBlank()) {
+                                            scope.launch { snackbarHostState.showSnackbar("Pilih setoran untuk dihapus") }
+                                        } else {
+                                            viewModel.deleteSetoranMahasiswa(
+                                                nimInput,
+                                                idSetoranInput,
+                                                idKomponenSetoranDeleteInput,
+                                                namaKomponenSetoranDeleteInput
+                                            )
+                                            idSetoranInput = ""
+                                            idKomponenSetoranDeleteInput = ""
+                                            namaKomponenSetoranDeleteInput = ""
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Transparent
+                                    ),
+                                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(Color(0xFFEF4444), Color(0xFFF87171))
+                                        )
+                                    )
+                                ) {
+                                    Text(
+                                        "Hapus Setoran",
+                                        fontSize = 16.sp,
+                                        color = Color(0xFFEF4444)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            when (val state = setoranState) {
+                is SetoranState.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFF2E7D32))
+                    }
+                }
+                is SetoranState.Success -> {
+                    state.data?.let {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .shadow(4.dp, RoundedCornerShape(8.dp)),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFD1FAE5))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Aksi setoran berhasil, data diperbarui",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = Color(0xFF065F46),
+                                        fontSize = 14.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+                is SetoranState.Error -> {
+                    LaunchedEffect(state) {
+                        scope.launch { snackbarHostState.showSnackbar(state.message) }
+                    }
+                }
+                else -> {}
             }
         }
     }

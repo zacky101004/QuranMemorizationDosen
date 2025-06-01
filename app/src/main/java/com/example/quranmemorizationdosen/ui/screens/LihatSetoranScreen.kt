@@ -1,5 +1,9 @@
 package com.example.quranmemorizationdosen.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,8 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.quranmemorizationdosen.data.api.InfoSetoranMhs
 import com.example.quranmemorizationdosen.data.api.SetoranMahasiswaResponse
 import com.example.quranmemorizationdosen.ui.navigation.BottomNavigationBar
 import kotlinx.coroutines.launch
@@ -34,62 +38,78 @@ fun LihatSetoranScreen(navController: NavController, nim: String) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    var selectedTabIndex by remember { mutableStateOf(0) }
+
     LaunchedEffect(nim) {
         viewModel.fetchSetoranMahasiswa(nim)
     }
+
+    val tabs = listOf("Progres", "Ringkasan")
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Setoran Mahasiswa", fontWeight = FontWeight.Medium) },
+                title = {
+                    Text(
+                        "Lihat Setoran Mahasiswa",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color.White
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF3B82F6),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+                    containerColor = Color(0xFF2E7D32)
+                ),
+                modifier = Modifier.shadow(6.dp)
             )
         },
-        bottomBar = { BottomNavigationBar(navController) }
+        bottomBar = { BottomNavigationBar(navController) },
+        modifier = Modifier.background(Color(0xFFFFFFFF))
     ) { paddingValues ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF1094A4),
-                            Color(0xFFD083EE),
-                            Color(0xFF3787A8)
-                        )
-                    )
-                )
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            when (val state = setoranState) {
-                is SetoranState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+            item {
+                // Info Mahasiswa
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(8.dp)),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                is SetoranState.Success -> {
-                    state.data?.let { setoran ->
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            item {
-                                StyledSectionCard(title = "Info Mahasiswa") {
+                        Text(
+                            text = "Informasi Mahasiswa",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = Color(0xFF2E7D32)
+                            )
+                        )
+                        Divider(color = Color(0xFFE0E0E0))
+                        when (val state = setoranState) {
+                            is SetoranState.Success -> {
+                                state.data?.let { setoran ->
                                     ProfileItem(label = "Nama", value = setoran.data.info.nama)
                                     ProfileItem(label = "NIM", value = setoran.data.info.nim)
                                     ProfileItem(label = "Email", value = setoran.data.info.email)
@@ -98,150 +118,284 @@ fun LihatSetoranScreen(navController: NavController, nim: String) {
                                     ProfileItem(label = "Dosen PA", value = setoran.data.info.dosen_pa.nama)
                                 }
                             }
-                            item {
-                                StyledSectionCard(title = "Progres Setoran") {
-                                    Text(
-                                        text = "Persentase: ${setoran.data.setoran.info_dasar.persentase_progres_setor}%",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    LinearProgressIndicator(
-                                        progress = (setoran.data.setoran.info_dasar.persentase_progres_setor / 100.0).toFloat(),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(8.dp),
-                                        color = when {
-                                            setoran.data.setoran.info_dasar.persentase_progres_setor < 30 -> Color(0xFFE57373)
-                                            setoran.data.setoran.info_dasar.persentase_progres_setor < 70 -> Color(0xFFFFB74D)
-                                            else -> Color(0xFF81C784)
-                                        }
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        StatisticBox(
-                                            title = "Wajib Setor",
-                                            value = setoran.data.setoran.info_dasar.total_wajib_setor.toString(),
-                                            color = MaterialTheme.colorScheme.tertiaryContainer
-                                        )
-                                        StatisticBox(
-                                            title = "Sudah Setor",
-                                            value = setoran.data.setoran.info_dasar.total_sudah_setor.toString(),
-                                            color = MaterialTheme.colorScheme.primaryContainer
-                                        )
-                                        StatisticBox(
-                                            title = "Belum Setor",
-                                            value = setoran.data.setoran.info_dasar.total_belum_setor.toString(),
-                                            color = MaterialTheme.colorScheme.secondaryContainer
+                            else -> {}
+                        }
+                    }
+                }
+            }
+
+            item {
+                // Progres dan Ringkasan dalam Tab
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(8.dp)),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Progres & Ringkasan",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = Color(0xFF2E7D32)
+                            )
+                        )
+                        Divider(color = Color(0xFFE0E0E0))
+                        TabRow(
+                            selectedTabIndex = selectedTabIndex,
+                            containerColor = Color.Transparent,
+                            contentColor = Color(0xFF2E7D32)
+                        ) {
+                            tabs.forEachIndexed { index, title ->
+                                Tab(
+                                    selected = selectedTabIndex == index,
+                                    onClick = { selectedTabIndex = index },
+                                    text = {
+                                        Text(
+                                            text = title,
+                                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = if (selectedTabIndex == index) Color(0xFF2E7D32) else Color(0xFF9E9E9E)
                                         )
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text("Terakhir Setor: ${setoran.data.setoran.info_dasar.terakhir_setor}")
-                                    setoran.data.setoran.info_dasar.tgl_terakhir_setor?.let {
-                                        Text("Tanggal: ${it.take(10)}")
+                                )
+                            }
+                        }
+                        when (selectedTabIndex) {
+                            0 -> {
+                                AnimatedVisibility(
+                                    visible = true,
+                                    enter = fadeIn(animationSpec = tween(300)),
+                                    exit = fadeOut(animationSpec = tween(300))
+                                ) {
+                                    when (val state = setoranState) {
+                                        is SetoranState.Success -> {
+                                            state.data?.let { setoran ->
+                                                Column(
+                                                    modifier = Modifier
+                                                        .padding(top = 16.dp)
+                                                        .fillMaxWidth(),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                                ) {
+                                                    CircularProgressIndicator(
+                                                        progress = (setoran.data.setoran.info_dasar.persentase_progres_setor / 100.0).toFloat(),
+                                                        modifier = Modifier.size(120.dp),
+                                                        color = Color(0xFF2E7D32),
+                                                        trackColor = Color(0xFFE0E0E0),
+                                                        strokeWidth = 12.dp
+                                                    )
+                                                    Text(
+                                                        text = "${setoran.data.setoran.info_dasar.persentase_progres_setor}%",
+                                                        style = MaterialTheme.typography.titleLarge.copy(
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 24.sp,
+                                                            color = Color(0xFF2E7D32)
+                                                        )
+                                                    )
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceEvenly
+                                                    ) {
+                                                        StatisticBox(
+                                                            title = "Wajib",
+                                                            value = setoran.data.setoran.info_dasar.total_wajib_setor.toString(),
+                                                            color = Color(0xFF4CAF50)
+                                                        )
+                                                        StatisticBox(
+                                                            title = "Sudah",
+                                                            value = setoran.data.setoran.info_dasar.total_sudah_setor.toString(),
+                                                            color = Color(0xFF81C784)
+                                                        )
+                                                        StatisticBox(
+                                                            title = "Belum",
+                                                            value = setoran.data.setoran.info_dasar.total_belum_setor.toString(),
+                                                            color = Color(0xFFC8E6C9)
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = "Terakhir Setor: ${setoran.data.setoran.info_dasar.terakhir_setor}",
+                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                            fontSize = 14.sp,
+                                                            color = Color(0xFF2E7D32)
+                                                        )
+                                                    )
+                                                    setoran.data.setoran.info_dasar.tgl_terakhir_setor?.let {
+                                                        Text(
+                                                            text = "Tanggal: ${it.take(10)}",
+                                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                                fontSize = 14.sp,
+                                                                color = Color(0xFF2E7D32)
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else -> {}
                                     }
                                 }
                             }
-                            item {
-                                StyledSectionCard(title = "Ringkasan Setoran") {
-                                    setoran.data.setoran.ringkasan.forEach { ringkasan ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 4.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(ringkasan.label)
-                                            Text("${ringkasan.total_sudah_setor}/${ringkasan.total_wajib_setor} (${ringkasan.persentase_progres_setor}%)")
+                            1 -> {
+                                AnimatedVisibility(
+                                    visible = true,
+                                    enter = fadeIn(animationSpec = tween(300)),
+                                    exit = fadeOut(animationSpec = tween(300))
+                                ) {
+                                    when (val state = setoranState) {
+                                        is SetoranState.Success -> {
+                                            state.data?.let { setoran ->
+                                                Column(
+                                                    modifier = Modifier
+                                                        .padding(top = 16.dp)
+                                                        .fillMaxWidth(),
+                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    setoran.data.setoran.ringkasan.forEach { ringkasan ->
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .padding(vertical = 4.dp),
+                                                            horizontalArrangement = Arrangement.SpaceBetween
+                                                        ) {
+                                                            Text(
+                                                                text = ringkasan.label,
+                                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                                    fontWeight = FontWeight.Medium,
+                                                                    fontSize = 14.sp,
+                                                                    color = Color(0xFF2E7D32)
+                                                                )
+                                                            )
+                                                            Text(
+                                                                text = "${ringkasan.total_sudah_setor}/${ringkasan.total_wajib_setor} (${ringkasan.persentase_progres_setor}%)",
+                                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                                    fontSize = 14.sp,
+                                                                    color = Color(0xFF4CAF50)
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
+                                        else -> {}
                                     }
                                 }
                             }
-                            item {
-                                StyledSectionCard(title = "Detail Setoran") {
+                        }
+                    }
+                }
+            }
+
+            item {
+                // Detail Setoran
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(8.dp)),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Detail Setoran",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = Color(0xFF2E7D32)
+                            )
+                        )
+                        Divider(color = Color(0xFFE0E0E0))
+                        when (val state = setoranState) {
+                            is SetoranState.Success -> {
+                                state.data?.let { setoran ->
                                     setoran.data.setoran.detail.forEach { item ->
                                         Card(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(vertical = 4.dp),
-                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                            elevation = CardDefaults.cardElevation(1.dp)
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                            elevation = CardDefaults.cardElevation(2.dp)
                                         ) {
-                                            Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(item.nama, fontWeight = FontWeight.SemiBold)
-                                                Text("Label: ${item.label}")
-                                                Text("Status: ${if (item.sudah_setor) "Sudah Setor" else "Belum Setor"}")
-                                                item.info_setoran?.let { info ->
-                                                    Text("Tanggal Setoran: ${info.tgl_setoran}")
-                                                    Text("Tanggal Validasi: ${info.tgl_validasi}")
-                                                    Text("Dosen: ${info.dosen_yang_mengesahkan.nama}")
+                                            Column(
+                                                modifier = Modifier.padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = item.nama,
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                                        fontSize = 16.sp,
+                                                        color = Color(0xFF2E7D32)
+                                                    )
+                                                )
+                                                Text(
+                                                    text = "Label: ${item.label}",
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        fontSize = 14.sp,
+                                                        color = Color(0xFF4CAF50)
+                                                    )
+                                                )
+                                                Text(
+                                                    text = "Status: ${if (item.sudah_setor) "Sudah Setor" else "Belum Setor"}",
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        fontSize = 14.sp,
+                                                        color = if (item.sudah_setor) Color(0xFF4CAF50) else Color(0xFFEF4444)
+                                                    )
+                                                )
+                                                item.info_setoran?.let { info: InfoSetoranMhs ->
+                                                    Text(
+                                                        text = "Tanggal Setoran: ${info.tgl_setoran}",
+                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                            fontSize = 14.sp,
+                                                            color = Color(0xFF4CAF50)
+                                                        )
+                                                    )
+                                                    Text(
+                                                        text = "Tanggal Validasi: ${info.tgl_validasi}",
+                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                            fontSize = 14.sp,
+                                                            color = Color(0xFF4CAF50)
+                                                        )
+                                                    )
+                                                    Text(
+                                                        text = "Dosen: ${info.dosen_yang_mengesahkan.nama}",
+                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                            fontSize = 14.sp,
+                                                            color = Color(0xFF4CAF50)
+                                                        )
+                                                    )
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
+                            else -> {}
                         }
-                    } ?: Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Data setoran kosong",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-                is SetoranState.Error -> {
-                    LaunchedEffect(state) {
-                        scope.launch { snackbarHostState.showSnackbar(state.message) }
-                    }
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Gagal memuat setoran: ${state.message}",
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                else -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Silakan pilih mahasiswa untuk melihat setoran",
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun StyledSectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            content()
+        when (val state = setoranState) {
+            is SetoranState.Error -> {
+                LaunchedEffect(state) {
+                    scope.launch { snackbarHostState.showSnackbar(state.message) }
+                }
+            }
+            else -> {}
         }
     }
 }
@@ -253,24 +407,47 @@ fun ProfileItem(label: String, value: String) {
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
-        Text(text = "$label: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = "$label: ",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = Color(0xFF2E7D32)
+            )
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp,
+                color = Color(0xFF4CAF50)
+            )
+        )
     }
 }
 
 @Composable
 fun StatisticBox(title: String, value: String, color: Color) {
-    Box(
+    Column(
         modifier = Modifier
-            .size(width = 100.dp, height = 64.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(color)
+            .background(color.copy(alpha = 0.2f))
             .padding(8.dp),
-        contentAlignment = Alignment.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(text = title, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
-        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xFF2E7D32)
+            )
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 12.sp,
+                color = Color(0xFF2E7D32)
+            )
+        )
     }
 }
