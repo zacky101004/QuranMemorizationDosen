@@ -206,17 +206,17 @@ fun LihatSetoranScreen(navController: NavController, nim: String) {
                                                         StatisticBox(
                                                             title = "Wajib",
                                                             value = setoran.data.setoran.info_dasar.total_wajib_setor.toString(),
-                                                            color = Color(0xFF4CAF50)
+                                                            color = Color(0xFFFF8E14)
                                                         )
                                                         StatisticBox(
                                                             title = "Sudah",
                                                             value = setoran.data.setoran.info_dasar.total_sudah_setor.toString(),
-                                                            color = Color(0xFF81C784)
+                                                            color = Color(0xFF2AAC31)
                                                         )
                                                         StatisticBox(
                                                             title = "Belum",
                                                             value = setoran.data.setoran.info_dasar.total_belum_setor.toString(),
-                                                            color = Color(0xFFC8E6C9)
+                                                            color = Color(0xFFD01111)
                                                         )
                                                     }
                                                     Text(
