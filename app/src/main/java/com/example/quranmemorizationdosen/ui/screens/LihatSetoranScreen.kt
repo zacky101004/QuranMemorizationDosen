@@ -29,6 +29,20 @@ import com.example.quranmemorizationdosen.data.api.SetoranMahasiswaResponse
 import com.example.quranmemorizationdosen.ui.navigation.BottomNavigationBar
 import kotlinx.coroutines.launch
 
+// Fungsi untuk mengubah format tanggal dari YYYY-MM-DD ke DD-MM-YYYY
+fun formatDate(dateString: String): String {
+    return try {
+        val parts = dateString.split("-")
+        if (parts.size == 3) {
+            "${parts[2]}-${parts[1]}-${parts[0]}"
+        } else {
+            dateString
+        }
+    } catch (e: Exception) {
+        dateString
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LihatSetoranScreen(navController: NavController, nim: String) {
@@ -228,7 +242,7 @@ fun LihatSetoranScreen(navController: NavController, nim: String) {
                                                     )
                                                     setoran.data.setoran.info_dasar.tgl_terakhir_setor?.let {
                                                         Text(
-                                                            text = "Tanggal: ${it.take(10)}",
+                                                            text = "Tanggal: ${formatDate(it.take(10))}",
                                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                                 fontSize = 14.sp,
                                                                 color = Color(0xFF2E7D32)
@@ -356,20 +370,6 @@ fun LihatSetoranScreen(navController: NavController, nim: String) {
                                                     )
                                                 )
                                                 item.info_setoran?.let { info: InfoSetoranMhs ->
-                                                    Text(
-                                                        text = "Tanggal Setoran: ${info.tgl_setoran}",
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            fontSize = 14.sp,
-                                                            color = Color(0xFF4CAF50)
-                                                        )
-                                                    )
-                                                    Text(
-                                                        text = "Tanggal Validasi: ${info.tgl_validasi}",
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            fontSize = 14.sp,
-                                                            color = Color(0xFF4CAF50)
-                                                        )
-                                                    )
                                                     Text(
                                                         text = "Dosen: ${info.dosen_yang_mengesahkan.nama}",
                                                         style = MaterialTheme.typography.bodyMedium.copy(
